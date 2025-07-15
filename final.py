@@ -1,12 +1,11 @@
 import streamlit as st
 import numpy as np
 import plotly.graph_objs as go
-import time
 
-# Config
 st.set_page_config(layout="wide")
+st.title("⚡ Real 4D-Like Animated Surface (Plotly in Streamlit)")
 
-# Functions
+# Define functions
 def func1(x, y, t):
     return np.sin(x + t) + np.cos(y + t), np.cos(x + t) - np.sin(y + t)
 
@@ -25,68 +24,68 @@ real_min = st.sidebar.slider("Real Min", -20.0, 0.0, -10.0)
 real_max = st.sidebar.slider("Real Max", 0.0, 20.0, 10.0)
 imag_min = st.sidebar.slider("Imag Min", -20.0, 0.0, -10.0)
 imag_max = st.sidebar.slider("Imag Max", 0.0, 20.0, 10.0)
-animate = st.sidebar.checkbox("🎞 Animate over time", value=False)
-fps = st.sidebar.slider("Speed (FPS)", 1, 30, 10)
 
-# Mesh Grid
-x = np.linspace(real_min, real_max, 100)
-y = np.linspace(imag_min, imag_max, 100)
+# Mesh grid
+x = np.linspace(real_min, real_max, 50)
+y = np.linspace(imag_min, imag_max, 50)
 X, Y = np.meshgrid(x, y)
+X_flat = X.flatten()
+Y_flat = Y.flatten()
+
 func = functions[selected_function]
 
-# Plot placeholder
-plot_area = st.empty()
+# Create frames for animation
+frames = []
+frame_count = 40
+t_values = np.linspace(0, 10, frame_count)
 
-if animate:
-    frames = np.linspace(0, 10, 100)
-    for t in frames:
-        Z_real, Z_imag = func(X, Y, t)
+for t in t_values:
+    Z_real, Z_imag = func(X, Y, t)
+    frame = go.Frame(
+        data=[
+            go.Surface(z=Z_real, x=X, y=Y, colorscale='Viridis', showscale=False),
+            go.Scatter3d(
+                x=X_flat,
+                y=Y_flat,
+                z=Z_real.flatten(),
+                mode='markers',
+                marker=dict(size=2, color=Z_imag.flatten(), colorscale='RdBu', opacity=0.6)
+            )
+        ],
+        name=str(t)
+    )
+    frames.append(frame)
 
-        fig = go.Figure()
+# Initial Z values
+Z_real, Z_imag = func(X, Y, t_values[0])
 
-        fig.add_trace(go.Surface(x=X, y=Y, z=Z_real, colorscale='Viridis', showscale=False))
-        fig.add_trace(go.Scatter3d(
-            x=X.flatten(), y=Y.flatten(), z=Z_real.flatten(),
+# Create figure
+fig = go.Figure(
+    data=[
+        go.Surface(z=Z_real, x=X, y=Y, colorscale='Viridis', showscale=False),
+        go.Scatter3d(
+            x=X_flat,
+            y=Y_flat,
+            z=Z_real.flatten(),
             mode='markers',
             marker=dict(size=2, color=Z_imag.flatten(), colorscale='RdBu', opacity=0.6)
-        ))
-
-        fig.update_layout(
-            title=f"{selected_function} | t = {t:.2f}",
-            scene=dict(
-                xaxis_title="Real",
-                yaxis_title="Imaginary",
-                zaxis_title="Z"
-            ),
-            height=750,
-            margin=dict(l=0, r=0, b=0, t=50)
         )
-
-        plot_area.plotly_chart(fig, use_container_width=True)
-        time.sleep(1 / fps)
-
-else:
-    t = st.sidebar.slider("Time", 0.0, 10.0, 1.0, 0.1)
-    Z_real, Z_imag = func(X, Y, t)
-
-    fig = go.Figure()
-
-    fig.add_trace(go.Surface(x=X, y=Y, z=Z_real, colorscale='Viridis', showscale=False))
-    fig.add_trace(go.Scatter3d(
-        x=X.flatten(), y=Y.flatten(), z=Z_real.flatten(),
-        mode='markers',
-        marker=dict(size=2, color=Z_imag.flatten(), colorscale='RdBu', opacity=0.6)
-    ))
-
-    fig.update_layout(
-        title=f"{selected_function} | t = {t:.2f}",
+    ],
+    layout=go.Layout(
+        title="Animated 3D Wave 🌊",
         scene=dict(
             xaxis_title="Real",
             yaxis_title="Imaginary",
             zaxis_title="Z"
         ),
-        height=750,
-        margin=dict(l=0, r=0, b=0, t=50)
-    )
+        updatemenus=[dict(
+            type="buttons",
+            showactive=False,
+            buttons=[dict(label="Play", method="animate", args=[None, {"frame": {"duration": 50}, "fromcurrent": True}])]
+        )]
+    ),
+    frames=frames
+)
 
-    plot_area.plotly_chart(fig, use_container_width=True)
+# Display
+st.plotly_chart(fig, use_container_width=True)
