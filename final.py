@@ -1,8 +1,10 @@
 import streamlit as st
 import numpy as np
 import plotly.graph_objs as go
+import time
 
 # Title
+st.set_page_config(page_title="🌊 3D Wave Visualizer", layout="wide")
 st.title("🌊 3D Wave Visualizer")
 st.markdown("Visualize complex functions in 3D with time-based dynamics.")
 
@@ -22,59 +24,73 @@ functions = {
 # Sidebar controls
 st.sidebar.header("🎛 Controls")
 selected_function = st.sidebar.radio("Choose Function:", list(functions.keys()))
-t = st.sidebar.slider("Time (t)", 0.0, 10.0, 1.0, step=0.1)
 real_min = st.sidebar.slider("Real Min", -20.0, 0.0, -10.0)
 real_max = st.sidebar.slider("Real Max", 0.0, 20.0, 10.0)
 imag_min = st.sidebar.slider("Imaginary Min", -20.0, 0.0, -10.0)
 imag_max = st.sidebar.slider("Imaginary Max", 0.0, 20.0, 10.0)
+animate = st.sidebar.checkbox("🎞 Animate over time", value=False)
+speed = st.sidebar.slider("Speed (frames/sec)", 1, 30, 10)
 
 # Grid setup
 x = np.linspace(real_min, real_max, 100)
 y = np.linspace(imag_min, imag_max, 100)
 X, Y = np.meshgrid(x, y)
 
-# Get selected function
-func = functions[selected_function]
-Z_real, Z_imag = func(X, Y, t)
+# Placeholder for animation
+plot_placeholder = st.empty()
 
-# 3D plot using Plotly
-fig = go.Figure()
+# Animation loop
+frames = np.linspace(0, 10, 100)
+if animate:
+    for t in frames:
+        func = functions[selected_function]
+        Z_real, Z_imag = func(X, Y, t)
 
-# Surface for real part
-fig.add_trace(go.Surface(
-    x=X, y=Y, z=Z_real,
-    colorscale='Viridis',
-    name='Real Part',
-    showscale=False
-))
+        fig = go.Figure()
+        fig.add_trace(go.Surface(x=X, y=Y, z=Z_real, colorscale='Viridis', showscale=False, name='Real'))
+        fig.add_trace(go.Scatter3d(
+            x=X.flatten(), y=Y.flatten(), z=Z_real.flatten(),
+            mode='markers',
+            marker=dict(size=2, color=Z_imag.flatten(), colorscale='RdBu', opacity=0.6),
+            name="Imaginary"
+        ))
 
-# Scatter for imaginary part (colored dots)
-fig.add_trace(go.Scatter3d(
-    x=X.flatten(),
-    y=Y.flatten(),
-    z=Z_real.flatten(),
-    mode='markers',
-    marker=dict(
-        size=2,
-        color=Z_imag.flatten(),
-        colorscale='RdBu',
-        opacity=0.6,
-        colorbar=dict(title="Imaginary")
-    ),
-    name="Imaginary"
-))
+        fig.update_layout(
+            title=f"Function: {selected_function} | Time = {t:.2f}",
+            scene=dict(
+                xaxis_title="Real Axis",
+                yaxis_title="Imaginary Axis",
+                zaxis_title="Z (Output)"
+            ),
+            height=750,
+            margin=dict(l=0, r=0, b=0, t=50)
+        )
 
-# Layout
-fig.update_layout(
-    title=f"Function: {selected_function} | Time = {t:.2f}",
-    scene=dict(
-        xaxis_title="Real Axis",
-        yaxis_title="Imaginary Axis",
-        zaxis_title="Z (Output)"
-    ),
-    height=750,
-    margin=dict(l=0, r=0, b=0, t=50)
-)
+        plot_placeholder.plotly_chart(fig, use_container_width=True)
+        time.sleep(1 / speed)
+else:
+    t = st.sidebar.slider("Time (t)", 0.0, 10.0, 1.0, step=0.1)
+    func = functions[selected_function]
+    Z_real, Z_imag = func(X, Y, t)
 
-# Show plot
-st.plotly_chart(fig, use_container_width=True)
+    fig = go.Figure()
+    fig.add_trace(go.Surface(x=X, y=Y, z=Z_real, colorscale='Viridis', showscale=False, name='Real'))
+    fig.add_trace(go.Scatter3d(
+        x=X.flatten(), y=Y.flatten(), z=Z_real.flatten(),
+        mode='markers',
+        marker=dict(size=2, color=Z_imag.flatten(), colorscale='RdBu', opacity=0.6),
+        name="Imaginary"
+    ))
+
+    fig.update_layout(
+        title=f"Function: {selected_function} | Time = {t:.2f}",
+        scene=dict(
+            xaxis_title="Real Axis",
+            yaxis_title="Imaginary Axis",
+            zaxis_title="Z (Output)"
+        ),
+        height=750,
+        margin=dict(l=0, r=0, b=0, t=50)
+    )
+
+    plot_placeholder.plotly_chart(fig, use_container_width=True)
